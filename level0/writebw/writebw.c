@@ -72,14 +72,6 @@ inline double sec(struct timeval start, struct timeval end) {
   return ((double)(((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec)))) / 1.0e6;
 }
 
-#if defined(__AVX512F__)
-static inline void stream_store_avx512(double* data, size_t offset, double val) {
-  __m512d l_vec = _mm512_set1_pd(val);
-
-  _mm512_stream_pd(data + offset, l_vec);
-}
-#endif
-
 int main(int argc, char* argv[]) {
   double* l_data;
   size_t l_n = 0;
@@ -142,9 +134,11 @@ int main(int argc, char* argv[]) {
     {
       double l_val = (double)omp_get_thread_num();
 #if defined(__AVX512F__)
+      __m512d l_vec = _mm512_set1_pd(l_val);
+
       #pragma omp for
       for ( l_n = 0; l_n < l_vec_end; l_n += 8 ) {
-        stream_store_avx512(l_data, l_n, l_val);
+        _mm512_stream_pd(l_data + l_n, l_vec);
       }
 
       #pragma omp for
